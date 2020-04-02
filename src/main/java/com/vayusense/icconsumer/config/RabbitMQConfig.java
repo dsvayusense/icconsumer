@@ -1,20 +1,13 @@
 package com.vayusense.icconsumer.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.listener.*;
-import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
-import org.springframework.amqp.rabbit.support.MessagePropertiesConverter;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
-import org.springframework.amqp.support.converter.MessageConverter;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.amqp.SimpleRabbitListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
@@ -40,6 +33,15 @@ public class RabbitMQConfig implements RabbitListenerConfigurer {
 
     @Value("${app2.routing.key}")
     private String routingkey2;
+
+    @Value("${app3.queue.name}")
+    private String queueName3;
+
+    @Value("${app3.exchange.name}")
+    private String exchange3;
+
+    @Value("${app3.routing.key}")
+    private String routingkey3;
 
     @Bean
     public Queue getApp1Queue() {
@@ -71,6 +73,21 @@ public class RabbitMQConfig implements RabbitListenerConfigurer {
     }
 
     @Bean
+    public Queue getApp3Queue() {
+        return new Queue(queueName3, false);
+    }
+
+    @Bean
+    public DirectExchange getApp3exchange() {
+        return new DirectExchange(exchange3);
+    }
+
+    @Bean
+    public Binding app3binding() {
+        return BindingBuilder.bind(getApp3Queue()).to(getApp3exchange()).with(routingkey3);
+    }
+
+    @Bean
     public MappingJackson2MessageConverter consumerJackson2MessageConverter() {
         return new MappingJackson2MessageConverter();
     }
@@ -82,8 +99,9 @@ public class RabbitMQConfig implements RabbitListenerConfigurer {
         return factory;
     }
 
+
     @Bean
-    public RabbitListenerContainerFactory<SimpleMessageListenerContainer> rabbitListenerContainerFirst(ConnectionFactory rabbitConnectionFactory) {
+    public RabbitListenerContainerFactory<SimpleMessageListenerContainer> rabbitListenerContainerState(ConnectionFactory rabbitConnectionFactory) {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         factory.setConnectionFactory(rabbitConnectionFactory);
         factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
@@ -94,7 +112,7 @@ public class RabbitMQConfig implements RabbitListenerConfigurer {
     }
 
     @Bean
-    public RabbitListenerContainerFactory<SimpleMessageListenerContainer> rabbitListenerContainerSecond(ConnectionFactory rabbitConnectionFactory) {
+    public RabbitListenerContainerFactory<SimpleMessageListenerContainer> rabbitListenerContainerlog(ConnectionFactory rabbitConnectionFactory) {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         factory.setConnectionFactory(rabbitConnectionFactory);
         factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
@@ -104,6 +122,16 @@ public class RabbitMQConfig implements RabbitListenerConfigurer {
         return factory;
     }
 
+    @Bean
+    public RabbitListenerContainerFactory<SimpleMessageListenerContainer> rabbitListenerContainerUnit(ConnectionFactory rabbitConnectionFactory) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(rabbitConnectionFactory);
+        factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        factory.setMessageConverter(new Jackson2JsonMessageConverter());
+        factory.setConcurrentConsumers(2);
+        factory.setMaxConcurrentConsumers(4);
+        return factory;
+    }
 
     @Override
     public void configureRabbitListeners(final RabbitListenerEndpointRegistrar registrar) {

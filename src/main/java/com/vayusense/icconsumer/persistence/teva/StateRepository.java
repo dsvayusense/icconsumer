@@ -1,4 +1,4 @@
-package com.vayusense.icconsumer.persistence;
+package com.vayusense.icconsumer.persistence.teva;
 
 import com.vayusense.icconsumer.entities.State;
 

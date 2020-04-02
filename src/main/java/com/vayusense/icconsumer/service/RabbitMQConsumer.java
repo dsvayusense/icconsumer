@@ -2,6 +2,8 @@ package com.vayusense.icconsumer.service;
 
 import com.rabbitmq.client.Channel;
 import com.vayusense.icconsumer.dto.StateDto;
+import com.vayusense.icconsumer.entities.MachineLearningLog;
+import com.vayusense.icconsumer.entities.Unit;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -17,35 +19,52 @@ import reactor.core.publisher.Mono;
 @Slf4j
 public class RabbitMQConsumer  {
 
-    private final StateService stateService;
+    private final TevaService tevaService;
 
-    @RabbitListener(containerFactory = "rabbitListenerContainerFirst", queues="app1-queue" )
-    public void listen(@Payload StateDto state, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag)throws Exception{
+    @RabbitListener(containerFactory = "rabbitListenerContainerState", queues="stateteva")
+    public void recieveState(@Payload StateDto state, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag)throws Exception{
         try {
-                 Mono<StateDto> monoState = stateService.SwitchMethodByConsume(state);
-                 log.info("Recieved Message From RabbitMQ app1: " + monoState.block());
-                 if(monoState.block() != null){
+                 Mono<String> monoState = tevaService.createState(state);
+                 log.info("Recieved Message From RabbitMQ for teva state : " + monoState.block());
+                 if (!monoState.block().isBlank()){
                      channel.basicAck(tag,false);
                  }
         }catch (Exception e){
+                log.error("there is a error while recieved a Message From RabbitMQ for teva state  : " + state);
                 channel.basicReject(tag, true);
         }
 
     }
 
-    @RabbitListener(containerFactory = "rabbitListenerContainerSecond", queues="app2-queue")
-    public void recieved(@Payload StateDto state, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag)throws Exception{
+    @RabbitListener(containerFactory = "rabbitListenerContainerlog", queues="logteva")
+    public void recievedLog(@Payload MachineLearningLog mlLog, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag)throws Exception{
         try{
-                log.info("Recieved Message From RabbitMQ: " + state);
-                if (state != null){
+              Mono<String> monoMLlog = tevaService.createMLLog(mlLog);
+               log.info("Recieved Message From RabbitMQ for teva log : " + mlLog);
+                if (!monoMLlog.block().isBlank()){
                     channel.basicAck(tag,false);
                 }
         }catch (Exception e){
+                log.error("there is a error while recieved a Message From RabbitMQ for teva log : " + mlLog);
                 channel.basicReject(tag, true);
         }
 
     }
 
+    @RabbitListener(containerFactory = "rabbitListenerContainerUnit", queues="unitteva")
+    public void recievedUnit(@Payload Unit unit, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag)throws Exception{
+        try{
+                Mono<String> monoUnit = tevaService.createUnit(unit);
+                log.info("Recieved Message From RabbitMQ: " + unit);
+                if (!monoUnit.block().isBlank()){
+                    channel.basicAck(tag,false);
+                }
+        }catch (Exception e){
+            log.error("there is a error while recieved a Message From RabbitMQ for teva unit : " + unit);
+            channel.basicReject(tag, true);
+        }
+
+    }
 
 
 }
